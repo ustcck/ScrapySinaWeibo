@@ -15,25 +15,11 @@ class HotSpider(scrapy.Spider):
 		weibos = response.xpath('//div[@id!="pagelist"]')
 		for weibo in weibos:
 			item = HotItem()
-			# initial item:
-			item['isSuper'] = False
-			item['isCertificated'] = False
-			item['isVip'] = False
-			item['isSthelse'] = False
 			# collect datas:
-			rank_imgs = weibo.xpath('div/img')
-			for rank_img in rank_imgs:
-				if rank_img.xpath('@alt').extract()[0] == u'达人':
-					item['isSuper'] = True
-				elif rank_img.xpath('@alt').extract()[0] == 'V':
-					item['isCertificated'] = True
-				elif rank_img.xpath('@alt').extract()[0] == 'M':
-					item['isVip'] = True
-				else:
-					item['isSthelse'] = True
-			# print item['isSuper'], item['isCertificated'], item['isVip'], item['isSthelse']
 			item['userId'] = weibo.xpath('div/a[@class="nk"]/text()').extract()[0]
-			# print item['userId']
+			item['userUrl'] = weibo.xpath('div/a[@class="nk"]/@href').extract()[0]
+			print item['userId'], item['userUrl']
+			yield scrapy.Request(item['userUrl'], callback=self.parse_user_info)
 			texts = weibo.xpath('div/span[@class="ctt"]/text()')
 			item['weibotext'] = u''
 			for text in texts.extract():
@@ -84,3 +70,44 @@ class HotSpider(scrapy.Spider):
 				url_next = url_prefix + url_suffix
 				yield scrapy.Request(url_next, self.parse)
 				break
+
+	def parse_user_info(self, response):
+		item = HotItem()
+		item['userUrl'] = response.url.decode('utf-8')
+		item['isSuper'] = False
+		item['isCertificated'] = False
+		item['isVip'] = False
+		item['isSthelse'] = False
+		rank_imgs = response.xpath('//div[@class="u"]//div[@class="ut"]//img')
+		for rank_img in rank_imgs:
+			if rank_img.xpath('@alt').extract()[0] == u'达人':
+				item['isSuper'] = True
+			elif rank_img.xpath('@alt').extract()[0] == 'V':
+				item['isCertificated'] = True
+			elif rank_img.xpath('@alt').extract()[0] == 'M':
+				item['isVip'] = True
+			else:
+				item['isSthelse'] = True
+		print item['isSuper'], item['isCertificated'], item['isVip'], item['isSthelse']
+		tmp_userid = response.xpath('//div[@class="u"]//div/span/text()').extract()[0]
+		item['userId'] = tmp_userid.split()[0]
+		pattern = re.compile(r'[0-9]+')
+		tmp_userWeiboAmount = response.xpath('//div[@class="tip2"]/span').extract()[0]
+		tmp_userWeiboAmount_re_result = re.search(pattern, tmp_userWeiboAmount)
+		if tmp_userWeiboAmount_re_result:
+			item['userWeiboAmount'] = int(tmp_userWeiboAmount_re_result.group())
+		else:
+			item['userWeiboAmount'] = 0
+		other_numbers = response.xpath('//div[@class="tip2"]/a')
+		for other_number in other_numbers:
+			if len(other_number.xpath('text()').extract()) > 0:
+				tmp_ustr = other_number.xpath('text()').extract()[0]
+				if tmp_ustr[0] == u'关':
+					tmp_result = re.search(pattern, tmp_ustr)
+					if tmp_result:
+						item['userWatchAmount'] = int(tmp_result.group())
+				elif tmp_ustr[0] == u'粉':
+					tmp_result = re.search(pattern, tmp_ustr)
+					if tmp_result:
+						item['userFansAmount'] = int(tmp_result.group())
+		yield item
