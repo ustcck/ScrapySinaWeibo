@@ -34,21 +34,36 @@ class MySQLStoreHotPipeline(object):
 			deferred = self.dbpool.runInteraction(self._do_upsert_user, item, spider)
 		elif 'weibotext' in item:
 			deferred = self.dbpool.runInteraction(self._do_upsert_weibo, item, spider)
+		elif 'userUrl' in item:
+			deferred = self.dbpool.runInteraction(self._do_upsert_user_urlandid, item, spider)
 		else:
 			"I CHOOSE GO DIE!!!"
 		return deferred
 
-	def _do_upsert_user(self, conn, item, spider):
-		print "**************************_do_upsert_user_********************************"
+	def _do_upsert_user_urlandid(self, conn, item, spider):
+		print "**********************_do_upsert_user_urlanlid_***************************"
 		select_sql = 'SELECT * FROM Hot_1_user WHERE userurl = %s'
-		update_sql = 'UPDATE Hot_1_user SET userid = %s, userfansamount = %s, userwatchamount = %s, userweiboamount = %s, issuper = %s, iscertificated = %s, isvip = %s, issthelse = %s WHERE userurl = %s'
-		insert_sql = 'INSERT INTO Hot_1_user(userurl, userid, userfansamount, userwatchamount, userweiboamount, issuper, iscertificated, isvip, issthelse) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)'
+		insert_sql = 'INSERT INTO Hot_1_user(userurl, userid) VALUES (%s, %s)'
+		update_sql = 'UPDATE Hot_1_user SET userid = %s WHERE userurl = %s'
 		conn.execute(select_sql, (item["userUrl"], ))
 		select_res = conn.fetchone()
 		if select_res:
-			conn.execute(update_sql, (item["userId"], item["userFansAmount"], item["userWatchAmount"], item["userWeiboAmount"], item["isSuper"], item["isCertificated"], item["isVip"], item["isSthelse"], item["userUrl"]))
+			conn.execute(update_sql, (item["userId"], item["userUrl"]))
 		else:
-			conn.execute(insert_sql, (item["userUrl"], item["userId"], item["userFansAmount"], item["userWatchAmount"], item["userWeiboAmount"], item["isSuper"], item["isCertificated"], item["isVip"], item["isSthelse"]))
+			conn.execute(insert_sql, (item["userUrl"], item["userId"]))
+		return item
+
+	def _do_upsert_user(self, conn, item, spider):
+		print "**************************_do_upsert_user_********************************"
+		select_sql = 'SELECT * FROM Hot_1_user WHERE userurl = %s'
+		update_sql = 'UPDATE Hot_1_user SET userid = %s, userfansamount = %s, userwatchamount = %s, userweiboamount = %s, issuper = %s, iscertificated = %s, isvip = %s WHERE userurl = %s'
+		insert_sql = 'INSERT INTO Hot_1_user(userurl, userid, userfansamount, userwatchamount, userweiboamount, issuper, iscertificated, isvip, issthelse) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
+		conn.execute(select_sql, (item["userUrl"], ))
+		select_res = conn.fetchone()
+		if select_res:
+			conn.execute(update_sql, (item["userId"], item["userFansAmount"], item["userWatchAmount"], item["userWeiboAmount"], item["isSuper"], item["isCertificated"], item["isVip"], item["userUrl"]))
+		else:
+			conn.execute(insert_sql, (item["userUrl"], item["userId"], item["userFansAmount"], item["userWatchAmount"], item["userWeiboAmount"], item["isSuper"], item["isCertificated"], item["isVip"]))
 		return item
 
 	def _do_upsert_weibo(self, conn, item, spider):			

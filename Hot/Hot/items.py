@@ -19,7 +19,6 @@ class HotItem(scrapy.Item):
 	isSuper = scrapy.Field()				#用户是否是达人
 	isCertificated = scrapy.Field()			#用户是否认证(大V)
 	isVip = scrapy.Field()					#用户是否是会员
-	isSthelse = scrapy.Field()				#检验是否还有别的身份
 	weibotext = scrapy.Field()				#微博正文
 	support = scrapy.Field()				#微博点赞数
 	relay = scrapy.Field()					#微博转发数
